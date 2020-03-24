@@ -35,6 +35,8 @@ import org.springframework.util.Assert;
  * @since 2.0
  * @see BeansDtdResolver
  * @see PluggableSchemaResolver
+ *
+ *
  */
 public class DelegatingEntityResolver implements EntityResolver {
 
@@ -59,7 +61,9 @@ public class DelegatingEntityResolver implements EntityResolver {
 	 * (can be {@code null}) to use the default ClassLoader)
 	 */
 	public DelegatingEntityResolver(@Nullable ClassLoader classLoader) {
+		//实现 EntityResolver 接口，Spring Bean dtd 解码器，用来从 classpath 或者 jar 文件中加载 dtd 。部分代码如下：
 		this.dtdResolver = new BeansDtdResolver();
+//		//实现 EntityResolver 接口，读取 classpath 下的所有 "META-INF/spring.schemas" 成一个 namespaceURI 与 Schema 文件地址的 map 。代码如下：
 		this.schemaResolver = new PluggableSchemaResolver(classLoader);
 	}
 
@@ -77,6 +81,15 @@ public class DelegatingEntityResolver implements EntityResolver {
 	}
 
 
+	/**
+	 * publicId ：被引用的外部实体的公共标识符，如果没有提供，则返回 null 。
+	 * systemId ：被引用的外部实体的系统标识符。
+	 * @param publicId
+	 * @param systemId
+	 * @return
+	 * @throws SAXException
+	 * @throws IOException
+	 */
 	@Override
 	@Nullable
 	public InputSource resolveEntity(@Nullable String publicId, @Nullable String systemId)
@@ -84,9 +97,11 @@ public class DelegatingEntityResolver implements EntityResolver {
 
 		if (systemId != null) {
 			if (systemId.endsWith(DTD_SUFFIX)) {
+				// DTD 模式
 				return this.dtdResolver.resolveEntity(publicId, systemId);
 			}
 			else if (systemId.endsWith(XSD_SUFFIX)) {
+				//XSD 模式
 				return this.schemaResolver.resolveEntity(publicId, systemId);
 			}
 		}

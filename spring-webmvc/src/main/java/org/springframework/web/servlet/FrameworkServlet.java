@@ -528,6 +528,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 
 		try {
 			this.webApplicationContext = initWebApplicationContext();
+			//空实现
 			initFrameworkServlet();
 		}
 		catch (ServletException | RuntimeException ex) {
@@ -558,11 +559,13 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * @see #setContextConfigLocation
 	 */
 	protected WebApplicationContext initWebApplicationContext() {
+		//查找跟容器
 		WebApplicationContext rootContext =
 				WebApplicationContextUtils.getWebApplicationContext(getServletContext());
 		WebApplicationContext wac = null;
 
 		if (this.webApplicationContext != null) {
+			//有可能DispatcherServlet被作为Spring bean初始化，且webApplicationContext已被注入进来(import)
 			// A context instance was injected at construction time -> use it
 			wac = this.webApplicationContext;
 			if (wac instanceof ConfigurableWebApplicationContext) {
@@ -584,10 +587,12 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 			// has been registered in the servlet context. If one exists, it is assumed
 			// that the parent context (if any) has already been set and that the
 			// user has performed any initialization such as setting the context id
+			//是否已经存在于ServletContext中
 			wac = findWebApplicationContext();
 		}
 		if (wac == null) {
 			// No context instance is defined for this servlet -> create a local one
+			//创建springmvc容器
 			wac = createWebApplicationContext(rootContext);
 		}
 
@@ -649,6 +654,12 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * @see org.springframework.web.context.support.XmlWebApplicationContext
 	 */
 	protected WebApplicationContext createWebApplicationContext(@Nullable ApplicationContext parent) {
+		//通过对getContextClass方法的调用，Spring允许我们自定义容器的类型，
+		//<!-- 容器类型 -->
+		//    <init-param>
+		//        <param-name>contextClass</param-name>
+		//        <param-value>java.lang.Object</param-value>
+		//    </init-param>
 		Class<?> contextClass = getContextClass();
 		if (!ConfigurableWebApplicationContext.class.isAssignableFrom(contextClass)) {
 			throw new ApplicationContextException(
@@ -659,12 +670,14 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 		ConfigurableWebApplicationContext wac =
 				(ConfigurableWebApplicationContext) BeanUtils.instantiateClass(contextClass);
 
-		wac.setEnvironment(getEnvironment());
+		wac.setEnvironment(getEnvironment());//propertyResolver,propertySource
 		wac.setParent(parent);
+		//获取spring-mvc配置文件的地址
 		String configLocation = getContextConfigLocation();
 		if (configLocation != null) {
-			wac.setConfigLocation(configLocation);
+			wac.setConfigLocation(configLocation);//classpath:springmvc.xml
 		}
+
 		configureAndRefreshWebApplicationContext(wac);
 
 		return wac;
@@ -686,7 +699,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 
 		wac.setServletContext(getServletContext());
 		wac.setServletConfig(getServletConfig());
-		wac.setNamespace(getNamespace());
+		wac.setNamespace(getNamespace());  //springmvc-servlet
 		wac.addApplicationListener(new SourceFilteringListener(wac, new ContextRefreshListener()));
 
 		// The wac environment's #initPropertySources will be called in any case when the context
@@ -697,8 +710,16 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 			((ConfigurableWebEnvironment) env).initPropertySources(getServletContext(), getServletConfig());
 		}
 
+		//空实现
 		postProcessWebApplicationContext(wac);
+
+		//ApplicationContextInitializer允许我们在Spring(mvc)容器初始化之前干点坏事，可以通过init-param传入:
+		//<init-param>
+		//    <param-name>contextInitializerClasses</param-name>
+		//    <param-value>坏事儿</param-value>
+		//</init-param>
 		applyInitializers(wac);
+		//配置解析  "配置"指的便是spring-servlet.xml:
 		wac.refresh();
 	}
 

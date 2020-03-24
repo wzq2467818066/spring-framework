@@ -58,13 +58,24 @@ public class FileSystemResourceLoader extends DefaultResourceLoader {
 	/**
 	 * FileSystemResource that explicitly expresses a context-relative path
 	 * through implementing the ContextResource interface.
+	 * FileSystemContextResource ，为 FileSystemResourceLoader 的内部类，
+	 * 它继承 FileSystemResource 类，实现 ContextResource 接口。
 	 */
 	private static class FileSystemContextResource extends FileSystemResource implements ContextResource {
 
+		/**
+		 * 在构造器中，也是调用 FileSystemResource 的构造函数来构造 FileSystemResource 的。
+		 * @param path
+		 */
 		public FileSystemContextResource(String path) {
 			super(path);
 		}
 
+		/**
+		 * 为什么要有 FileSystemContextResource 类的原因是，实现 ContextResource 接口，
+		 * 并实现对应的 #getPathWithinContext() 接口方法。
+		 * @return
+		 */
 		@Override
 		public String getPathWithinContext() {
 			return getPath();

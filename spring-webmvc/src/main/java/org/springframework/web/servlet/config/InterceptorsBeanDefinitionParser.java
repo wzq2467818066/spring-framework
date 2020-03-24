@@ -39,6 +39,10 @@ import org.springframework.web.servlet.handler.MappedInterceptor;
  * @author Keith Donald
  * @since 3.0
  */
+
+/**
+ * InterceptorsBeanDefinitionParser.parse方法负责将每一项mvc:interceptor配置解析为一个MappedInterceptor bean并注册到容器中。
+ */
 class InterceptorsBeanDefinitionParser implements BeanDefinitionParser {
 
 	@Override

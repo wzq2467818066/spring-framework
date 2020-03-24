@@ -38,6 +38,9 @@ import org.springframework.util.ResourceUtils;
  * @see org.springframework.core.io.support.ResourcePatternResolver
  * @see org.springframework.context.ApplicationContext
  * @see org.springframework.context.ResourceLoaderAware
+ * 一开始就说了 Spring 将资源的定义和资源的加载区分开了，Resource 定义了统一的资源，那资源的加载则由 ResourceLoader 来统一定义。
+ *
+ * org.springframework.core.io.ResourceLoader 为 Spring 资源加载的统一抽象，具体的资源加载则由相应的实现类来完成，所以我们可以将 ResourceLoader 称作为统一资源定位器。其定义如下：
  */
 public interface ResourceLoader {
 
@@ -63,6 +66,14 @@ public interface ResourceLoader {
 	 * @see #CLASSPATH_URL_PREFIX
 	 * @see Resource#exists()
 	 * @see Resource#getInputStream()
+	 *
+	 * #getResource(String location) 方法，根据所提供资源的路径 location 返回 Resource 实例，但是它不确保该 Resource 一定存在，需要调用 Resource#exist() 方法来判断。
+	 * 该方法支持以下模式的资源加载：
+	 * URL位置资源，如 "file:C:/test.dat" 。
+	 * ClassPath位置资源，如 "classpath:test.dat 。
+	 * 相对路径资源，如 "WEB-INF/test.dat" ，此时返回的Resource 实例，根据实现不同而不同。
+	 * 该方法的主要实现是在其子类 DefaultResourceLoader 中实现，具体过程我们在分析 DefaultResourceLoader 时做详细说明。
+	 *
 	 */
 	Resource getResource(String location);
 
@@ -75,6 +86,10 @@ public interface ResourceLoader {
 	 * (only {@code null} if even the system ClassLoader isn't accessible)
 	 * @see org.springframework.util.ClassUtils#getDefaultClassLoader()
 	 * @see org.springframework.util.ClassUtils#forName(String, ClassLoader)
+	 * #getClassLoader() 方法，返回 ClassLoader 实例，对于想要获取 ResourceLoader
+	 * 使用的 ClassLoader 用户来说，
+	 * 可以直接调用该方法来获取。在分析 Resource 时，提到了一个类 ClassPathResource ，
+	 * 这个类是可以根据指定的 ClassLoader 来加载资源的。
 	 */
 	@Nullable
 	ClassLoader getClassLoader();

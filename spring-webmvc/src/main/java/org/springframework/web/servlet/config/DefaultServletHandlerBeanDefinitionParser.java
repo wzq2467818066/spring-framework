@@ -42,6 +42,14 @@ import org.springframework.web.servlet.resource.DefaultServletHttpRequestHandler
  * @author Rossen Stoyanchev
  * @since 3.0.4
  */
+
+/**
+ * DefaultServletHandlerBeanDefinitionParser.parse负责向容器注册以下三个组件:
+ *
+ * DefaultServletHttpRequestHandler
+ * SimpleUrlHandlerMapping
+ * HttpRequestHandlerAdapter
+ */
 class DefaultServletHandlerBeanDefinitionParser implements BeanDefinitionParser {
 
 	@Override

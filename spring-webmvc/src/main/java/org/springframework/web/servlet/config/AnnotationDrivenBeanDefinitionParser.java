@@ -190,6 +190,7 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	}
 
 
+	//其parse方法负责向Sprng容器注册一些必要的组件
 	@Override
 	@Nullable
 	public BeanDefinition parse(Element element, ParserContext context) {

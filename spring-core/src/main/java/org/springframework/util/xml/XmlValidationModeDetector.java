@@ -92,27 +92,34 @@ public class XmlValidationModeDetector {
 		// Peek into the file to look for DOCTYPE.
 		BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
 		try {
+			// 是否为 DTD 校验模式。默认为，非 DTD 模式，即 XSD 模式
 			boolean isDtdValidated = false;
 			String content;
+			// <0> 循环，逐行读取 XML 文件的内容
 			while ((content = reader.readLine()) != null) {
 				content = consumeCommentTokens(content);
+				// 跳过，如果是注释，或者""
 				if (this.inComment || !StringUtils.hasText(content)) {
 					continue;
 				}
+				// <1> 包含 DOCTYPE 为 DTD 模式
 				if (hasDoctype(content)) {
 					isDtdValidated = true;
 					break;
 				}
+				// <2>  hasOpeningTag 方法会校验，如果这一行有 < ，并且 < 后面跟着的是字母，则返回 true 。
 				if (hasOpeningTag(content)) {
 					// End of meaningful data...
 					break;
 				}
 			}
+			// 返回 VALIDATION_DTD or VALIDATION_XSD 模式
 			return (isDtdValidated ? VALIDATION_DTD : VALIDATION_XSD);
 		}
 		catch (CharConversionException ex) {
 			// Choked on some character encoding...
 			// Leave the decision up to the caller.
+			// <3> 返回 VALIDATION_AUTO 模式
 			return VALIDATION_AUTO;
 		}
 		finally {
@@ -123,6 +130,7 @@ public class XmlValidationModeDetector {
 
 	/**
 	 * Does the content contain the DTD DOCTYPE declaration?
+	 * 判断内容中如果包含有 "DOCTYPE“ ，则为 DTD 验证模式。
 	 */
 	private boolean hasDoctype(String content) {
 		return content.contains(DOCTYPE);
@@ -132,14 +140,16 @@ public class XmlValidationModeDetector {
 	 * Does the supplied content contain an XML opening tag. If the parse state is currently
 	 * in an XML comment then this method always returns false. It is expected that all comment
 	 * tokens will have consumed for the supplied content before passing the remainder to this method.
+	 * 判断如果这一行包含 < ，并且 < 紧跟着的是字母，则为 XSD 验证模式。代码如下
 	 */
 	private boolean hasOpeningTag(String content) {
 		if (this.inComment) {
 			return false;
 		}
 		int openTagIndex = content.indexOf('<');
-		return (openTagIndex > -1 && (content.length() > openTagIndex + 1) &&
-				Character.isLetter(content.charAt(openTagIndex + 1)));
+		return (openTagIndex > -1  //< 存在
+				&& (content.length() > openTagIndex + 1) &&// < 后面还有内容
+				Character.isLetter(content.charAt(openTagIndex + 1)));// < 后面的内容是字母
 	}
 
 	/**
@@ -150,6 +160,7 @@ public class XmlValidationModeDetector {
 	@Nullable
 	private String consumeCommentTokens(String line) {
 		int indexOfStartComment = line.indexOf(START_COMMENT);
+		// 非注释
 		if (indexOfStartComment == -1 && !line.contains(END_COMMENT)) {
 			return line;
 		}

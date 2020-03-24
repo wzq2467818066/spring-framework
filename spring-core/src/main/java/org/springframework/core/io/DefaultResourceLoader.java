@@ -31,6 +31,42 @@ import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
 
 /**
+ * ResourceLoader resourceLoader = new DefaultResourceLoader();
+ *
+ * Resource fileResource1 = resourceLoader.getResource("D:/Users/chenming673/Documents/spark.txt");
+ * System.out.println("fileResource1 is FileSystemResource:" + (fileResource1 instanceof FileSystemResource));
+ *
+ * Resource fileResource2 = resourceLoader.getResource("/Users/chenming673/Documents/spark.txt");
+ * System.out.println("fileResource2 is ClassPathResource:" + (fileResource2 instanceof ClassPathResource));
+ *
+ * Resource urlResource1 = resourceLoader.getResource("file:/Users/chenming673/Documents/spark.txt");
+ * System.out.println("urlResource1 is UrlResource:" + (urlResource1 instanceof UrlResource));
+ *
+ * Resource urlResource2 = resourceLoader.getResource("http://www.baidu.com");
+ * System.out.println("urlResource1 is urlResource:" + (urlResource2 instanceof  UrlResource));
+ */
+/**运行结果
+ * fileResource1 is FileSystemResource:false
+ * fileResource2 is ClassPathResource:true
+ * urlResource1 is UrlResource:true
+ * urlResource1 is urlResource:true
+ */
+/**
+ * 其实对于 fileResource1 ，我们更加希望是 FileSystemResource 资源类型。但是，事与愿违，
+ * 它是 ClassPathResource 类型。为什么呢？在 DefaultResourceLoader#getResource() 方法的资源加载策略中，
+ * 我们知道 "D:/Users/chenming673/Documents/spark.txt" 地址，其实在该方法中没有相应的资源类型，
+ * 那么它就会在抛出 MalformedURLException 异常时，通过 DefaultResourceLoader#getResourceByPath(...) 方法，
+ * 构造一个 ClassPathResource 类型的资源。
+ * 而 urlResource1 和 urlResource2 ，指定有协议前缀的资源路径，则通过 URL 就可以定义，所以返回的都是 UrlResource 类型
+ *
+ *
+ * 从上面的示例，我们看到，其实 DefaultResourceLoader 对#getResourceByPath(String) 方法处理其实不是很恰当，
+ * 这个时候我们可以使用 org.springframework.core.io.FileSystemResourceLoader 。
+ * 它继承 DefaultResourceLoader ，且覆写了 #getResourceByPath(String) 方法，
+ * 使之从文件系统加载资源并以 FileSystemResource 类型返回，这样我们就可以得到想要的资源类型。
+ */
+
+/**
  * Default implementation of the {@link ResourceLoader} interface.
  * Used by {@link ResourceEditor}, and serves as base class for
  * {@link org.springframework.context.support.AbstractApplicationContext}.
@@ -44,12 +80,22 @@ import org.springframework.util.StringUtils;
  * @since 10.03.2004
  * @see FileSystemResourceLoader
  * @see org.springframework.context.support.ClassPathXmlApplicationContext
+ * 与 AbstractResource 相似，org.springframework.core.io.DefaultResourceLoader 是 ResourceLoader 的默认实现。
  */
 public class DefaultResourceLoader implements ResourceLoader {
 
 	@Nullable
 	private ClassLoader classLoader;
 
+	/**
+	 * org.springframework.core.io.ProtocolResolver ，用户自定义协议资源解决策略，
+	 * 作为 DefaultResourceLoader 的 SPI：它允许用户自定义资源加载协议，而不需要继承 ResourceLoader 的子类。
+	 * 在介绍 Resource 时，提到如果要实现自定义 Resource，我们只需要继承 AbstractResource 即可，但
+	 * 是有了 ProtocolResolver 后，我们不需要直接继承 DefaultResourceLoader，
+	 * 改为实现 ProtocolResolver 接口也可以实现自定义的 ResourceLoader。
+	 *
+	 * ProtocolResolver 接口，仅有一个方法 Resource resolve(String location, ResourceLoader resourceLoader)
+	 */
 	private final Set<ProtocolResolver> protocolResolvers = new LinkedHashSet<>(4);
 
 	private final Map<Class<?>, Map<Resource, ?>> resourceCaches = new ConcurrentHashMap<>(4);
@@ -60,6 +106,12 @@ public class DefaultResourceLoader implements ResourceLoader {
 	 * <p>ClassLoader access will happen using the thread context class loader
 	 * at the time of this ResourceLoader's initialization.
 	 * @see java.lang.Thread#getContextClassLoader()
+	 * 它接收 ClassLoader 作为构造函数的参数，或者使用不带参数的构造函数。
+	 *
+	 * 在使用不带参数的构造函数时，使用的 ClassLoader 为默认的 ClassLoader（一般 Thread.currentThread()#getContextClassLoader() ）。
+	 * 在使用带参数的构造函数时，可以通过 ClassUtils#getDefaultClassLoader()获取。
+	 * 在 Spring 中你会发现该接口并没有实现类，它需要用户自定义，
+	 * 自定义的 Resolver 如何加入 Spring 体系呢？调用 DefaultResourceLoader#addProtocolResolver(ProtocolResolver) 方法即可。
 	 */
 	public DefaultResourceLoader() {
 		this.classLoader = ClassUtils.getDefaultClassLoader();
@@ -140,23 +192,34 @@ public class DefaultResourceLoader implements ResourceLoader {
 	}
 
 
+	/**
+	 * ResourceLoader 中最核心的方法为 #getResource(String location) ，
+	 * 它根据提供的 location 返回相应的 Resource 。
+	 * 而 DefaultResourceLoader 对该方法提供了核心实现
+	 * （因为，它的两个子类都没有提供覆盖该方法，所以可以断定 ResourceLoader 的资源加载策略就封装在 DefaultResourceLoader 中)
+	 * @param location the resource location
+	 * @return
+	 */
 	@Override
 	public Resource getResource(String location) {
 		Assert.notNull(location, "Location must not be null");
 
+		// 首先，通过 ProtocolResolver 来加载资源，用户自定义实现
 		for (ProtocolResolver protocolResolver : getProtocolResolvers()) {
 			Resource resource = protocolResolver.resolve(location, this);
 			if (resource != null) {
 				return resource;
 			}
 		}
-
+      // 其次，以 / 开头，返回 ClassPathContextResource 类型的资源，
 		if (location.startsWith("/")) {
 			return getResourceByPath(location);
 		}
+		//再次，以 classpath: 开头，返回 ClassPathResource 类型的资源
 		else if (location.startsWith(CLASSPATH_URL_PREFIX)) {
 			return new ClassPathResource(location.substring(CLASSPATH_URL_PREFIX.length()), getClassLoader());
 		}
+		// 然后，根据是否为文件 URL ，是则返回 FileUrlResource 类型的资源，否则返回 UrlResource 类型的资源
 		else {
 			try {
 				// Try to parse the location as a URL...
@@ -164,6 +227,7 @@ public class DefaultResourceLoader implements ResourceLoader {
 				return (ResourceUtils.isFileURL(url) ? new FileUrlResource(url) : new UrlResource(url));
 			}
 			catch (MalformedURLException ex) {
+				// 最后，返回 ClassPathContextResource 类型的资源
 				// No URL -> resolve as resource path.
 				return getResourceByPath(location);
 			}
@@ -189,6 +253,7 @@ public class DefaultResourceLoader implements ResourceLoader {
 	/**
 	 * ClassPathResource that explicitly expresses a context-relative path
 	 * through implementing the ContextResource interface.
+	 * 显式地表示上下文相关相对路径的ClassPathResource
 	 */
 	protected static class ClassPathContextResource extends ClassPathResource implements ContextResource {
 

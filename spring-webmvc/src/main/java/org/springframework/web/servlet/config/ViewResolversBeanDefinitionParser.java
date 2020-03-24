@@ -61,6 +61,9 @@ import org.springframework.web.servlet.view.tiles3.TilesViewResolver;
  * @see GroovyMarkupConfigurerBeanDefinitionParser
  * @see ScriptTemplateConfigurerBeanDefinitionParser
  */
+/*
+ViewResolversBeanDefinitionParser.parse方法的作用便是将每一个视图解析为ViewResolver并注册到容器。
+ */
 public class ViewResolversBeanDefinitionParser implements BeanDefinitionParser {
 
 	/**

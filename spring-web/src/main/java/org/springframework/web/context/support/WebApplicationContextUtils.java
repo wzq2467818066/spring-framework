@@ -110,6 +110,7 @@ public abstract class WebApplicationContextUtils {
 	@Nullable
 	public static WebApplicationContext getWebApplicationContext(ServletContext sc, String attrName) {
 		Assert.notNull(sc, "ServletContext must not be null");
+		//如果Spring根容器存在，那么它被保存在ServletContext中，其Key为WebApplicationContext.class.getName()+".ROOT"。
 		Object attr = sc.getAttribute(attrName);
 		if (attr == null) {
 			return null;
